@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Creator Planet - 3D Community Engineering Puzzle Game</title>
+    <meta name="description" content="Repair the emergency route in a vibrant 3D low-poly village so the ambulance can reach the hospital!" />
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script type="module" crossorigin src="/assets/index-CGaptcRa.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-B6jFUiya.css">
+  </head>
+  <body>
+    <!-- 3D Canvas Canvas -->
+    <div id="canvas-container">
+      <canvas id="game-canvas"></canvas>
+    </div>
+
+    <!-- UI Overlay Layer -->
+    <div id="ui-layer">
+      <!-- Top Header Navigation -->
+      <header id="top-bar">
+        <div class="logo-group">
+          <div class="planet-badge">🪐</div>
+          <div>
+            <h1 class="game-title">CREATOR PLANET</h1>
+            <span class="brand-tag">3D ENGINEERING PUZZLE</span>
+          </div>
+        </div>
+
+        <!-- Top Center: Mission Objective & State Card -->
+        <div id="mission-objective-bar" class="glass-panel">
+          <div class="objective-header">
+            <span class="objective-label">MISSION OBJECTIVE</span>
+            <div class="state-badges">
+              <span id="badge-mission-state" class="state-pill mission-active">MISSION: ACTIVE</span>
+              <span id="badge-game-state" class="state-pill game-state">STATE: START</span>
+            </div>
+          </div>
+          <div class="objective-title">EMERGENCY ROUTE RESCUE</div>
+          <div class="objective-desc">Repair the blocked bridge so the ambulance can reach the hospital.</div>
+        </div>
+
+        <!-- Top Right Group: Controls & Minimap -->
+        <div class="top-right-group">
+          <div class="header-actions">
+            <button id="btn-audio-toggle" class="icon-btn" title="Toggle Sound (M)">
+              <span id="audio-icon">🔊</span>
+            </button>
+            <button id="btn-camera-view" class="icon-btn" title="Toggle Camera Perspective (V)">
+              🎥
+            </button>
+            <button id="btn-pause-menu" class="icon-btn" title="Pause Game (ESC)">
+              ⏸️
+            </button>
+            <button id="btn-help-modal" class="icon-btn" title="Controls & Guide (H)">
+              ❓
+            </button>
+          </div>
+
+          <!-- Top-Right Radar Minimap -->
+          <div id="minimap-container" class="glass-panel" title="Village Radar Minimap">
+            <div class="minimap-header">
+              <span class="minimap-title">RADAR MINIMAP</span>
+              <span class="minimap-ping"></span>
+            </div>
+            <canvas id="minimap-canvas" width="160" height="150"></canvas>
+            <div class="minimap-legend">
+              <span class="legend-item"><span class="legend-dot player-dot"></span>PLAYER</span>
+              <span class="legend-item"><span class="legend-dot bridge-dot"></span>BRIDGE</span>
+              <span class="legend-item"><span class="legend-dot supply-dot"></span>BUILD AREA</span>
+              <span class="legend-item"><span class="legend-dot hospital-dot"></span>HOSPITAL</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Left HUD: Mission Tasks Checklist Panel -->
+      <div id="mission-tasks-panel" class="glass-panel">
+        <div class="tasks-header">
+          <span class="tasks-title">MISSION TASKS</span>
+          <span id="tasks-progress-badge" class="tasks-badge">0%</span>
+        </div>
+        <div class="tasks-progress-bar">
+          <div id="tasks-progress-fill" style="width: 0%;"></div>
+        </div>
+        <ul class="task-list">
+          <li id="task-find-bridge" class="task-item">
+            <span class="task-check" id="chk-find-bridge">[ ]</span>
+            <span class="task-label">Find blocked bridge</span>
+          </li>
+          <li id="task-interact-bridge" class="task-item">
+            <span class="task-check" id="chk-interact-bridge">[ ]</span>
+            <span class="task-label">Collect part & interact with bridge</span>
+            <span id="task-collect-part" style="display:none;"></span>
+          </li>
+          <li id="task-repair-bridge" class="task-item">
+            <span class="task-check" id="chk-repair-bridge">[ ]</span>
+            <span class="task-label">Repair bridge</span>
+          </li>
+          <li id="task-test-route" class="task-item">
+            <span class="task-check" id="chk-test-route">[ ]</span>
+            <span class="task-label">Test route</span>
+          </li>
+          <li id="task-ambulance-hospital" class="task-item">
+            <span class="task-check" id="chk-ambulance-hospital">[ ]</span>
+            <span class="task-label">Ambulance reaches hospital</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Center: In-World Proximity Prompt -->
+      <div id="interaction-prompt" class="prompt-hidden">
+        <div class="key-pill">E</div>
+        <div class="prompt-text">
+          <span class="prompt-title">BRIDGE BLOCKED</span>
+          <span class="prompt-sub">[E] INTERACT</span>
+        </div>
+      </div>
+
+      <!-- Center: Dynamic Engineering Feedback Toast -->
+      <div id="feedback-toast" class="toast-hidden">
+        <div class="toast-icon" id="toast-icon">💡</div>
+        <div class="toast-content">
+          <div class="toast-title" id="toast-title">ENGINEER HINT</div>
+          <div class="toast-message" id="toast-msg">Select Road or Bridge and snap it across the river sockets.</div>
+        </div>
+        <button id="toast-close-btn" class="toast-close">&times;</button>
+      </div>
+
+      <!-- Bottom HUD: Route Validation & Build Dock -->
+      <div id="bottom-hud-container">
+        <!-- Route Access & Topological Route Map -->
+        <div class="route-progress-card glass-panel" id="route-meter-card">
+          <div class="meter-header">
+            <span class="meter-label" id="route-access-label">ROUTE ACCESS: <span id="route-percent-display">0%</span></span>
+            <span class="status-tag incomplete" id="route-status-tag">Bridge connection is incomplete.</span>
+          </div>
+          
+          <!-- Route Topological Graph Diagram: START -> ROAD -> BRIDGE -> ROAD -> HOSPITAL -->
+          <div class="route-diagram" id="route-diagram">
+            <span class="node connected" id="node-start" title="Ambulance Depot">START</span>
+            <span class="node-arrow">→</span>
+            <span class="node connected" id="node-road1" title="South Approach Road">ROAD</span>
+            <span class="node-arrow">→</span>
+            <span class="node severed" id="node-bridge" title="River Bridge Spans">BRIDGE</span>
+            <span class="node-arrow">→</span>
+            <span class="node connected" id="node-road2" title="North Hospital Road">ROAD</span>
+            <span class="node-arrow">→</span>
+            <span class="node connected" id="node-hospital" title="Village Hospital">HOSPITAL</span>
+          </div>
+
+          <div class="progress-track">
+            <div class="progress-fill" id="route-progress-fill" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Engineering Build Mode Dock -->
+        <div id="build-dock" class="dock-hidden">
+          <div class="dock-inner glass-panel">
+            <div class="dock-section header-section">
+              <div class="mode-badge">
+                <span class="pulse-dot"></span>
+                BUILD MODE
+              </div>
+              <div class="dock-tip">Snap pieces to glowing anchor sockets</div>
+            </div>
+
+            <!-- Component Palette: ROAD, BRIDGE, ARCH -->
+            <div class="dock-section components-section">
+              <div class="component-card active" data-component="road" id="tool-straight">
+                <div class="card-preview straight-preview">🛣️</div>
+                <div class="card-info">
+                  <span class="card-title">ROAD</span>
+                  <span class="card-desc">Standard span</span>
+                </div>
+                <span class="hotkey-hint">[1]</span>
+              </div>
+
+              <div class="component-card" data-component="bridge" id="tool-truss">
+                <div class="card-preview truss-preview">🌉</div>
+                <div class="card-info">
+                  <span class="card-title">BRIDGE</span>
+                  <span class="card-desc">Steel truss</span>
+                </div>
+                <span class="hotkey-hint">[2]</span>
+              </div>
+
+              <div class="component-card" data-component="arch" id="tool-arch">
+                <div class="card-preview arch-preview">🏛️</div>
+                <div class="card-info">
+                  <span class="card-title">ARCH</span>
+                  <span class="card-desc">Stone arch</span>
+                </div>
+                <span class="hotkey-hint">[3]</span>
+              </div>
+            </div>
+
+            <!-- Build Tools / Actions: MOVE, ROTATE, CONNECT, CANCEL, TEST -->
+            <div class="dock-section action-tools">
+              <button class="tool-btn" id="btn-move-piece" title="Reposition or pick up placed piece (M)">
+                <span class="btn-icon">✋</span>
+                <span>MOVE</span>
+              </button>
+              <button class="tool-btn" id="btn-rotate-piece" title="Rotate component 90 degrees (R)">
+                <span class="btn-icon">🔄</span>
+                <span>ROTATE [R]</span>
+              </button>
+              <button class="tool-btn" id="btn-connect-piece" title="Confirm snap placement (Space/Click)">
+                <span class="btn-icon">🔗</span>
+                <span>CONNECT</span>
+              </button>
+              <button class="tool-btn" id="btn-remove-piece" title="Cancel/Remove placed piece (X)">
+                <span class="btn-icon">❌</span>
+                <span>CANCEL</span>
+              </button>
+              <button class="test-btn" id="btn-test-route" title="Analyze and validate bridge integrity">
+                <span class="scan-beam"></span>
+                <span class="btn-icon">⚡</span>
+                <span class="test-label">TEST</span>
+              </button>
+              <button class="tool-btn exit-btn" id="btn-exit-build" title="Exit build mode (E/Esc)">
+                <span class="btn-icon">🚶</span>
+                <span>EXIT [E]</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls & Guide HUD Overlay (Bottom Right) -->
+      <div id="controls-hint-badge" class="glass-panel">
+        <div class="badge-title">CONTROLS</div>
+        <div class="control-row"><span class="key">WASD</span> Move</div>
+        <div class="control-row"><span class="key">Mouse</span> Camera</div>
+        <div class="control-row"><span class="key">Space</span> Jump / Place</div>
+        <div class="control-row"><span class="key">E</span> Interact / Build</div>
+        <div class="control-row"><span class="key">R</span> Rotate Piece</div>
+        <div class="control-row"><span class="key">ESC</span> Pause</div>
+      </div>
+
+      <!-- Modal: Pause Menu (ESC) -->
+      <div id="modal-pause" class="modal-backdrop modal-hidden">
+        <div class="modal-card glass-panel-popup">
+          <h2 class="modal-title">⏸️ GAME PAUSED</h2>
+          <p class="modal-text">Emergency Route Rescue is paused.</p>
+          <div class="modal-actions column-actions">
+            <button id="btn-resume-game" class="modal-btn primary-btn">
+              ▶️ Resume Game
+            </button>
+            <button id="btn-pause-howtoplay" class="modal-btn secondary-btn">
+              ❓ Controls & How To Play
+            </button>
+            <button id="btn-pause-restart" class="modal-btn secondary-btn">
+              🔄 Reset Mission
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Mission Complete Celebration & Next Area Unlocked -->
+      <div id="modal-mission-complete" class="modal-backdrop modal-hidden">
+        <div class="modal-card glass-panel-popup">
+          <div class="confetti-cannon">🎉</div>
+          <div class="star-rating">
+            <span class="star lit">⭐</span>
+            <span class="star lit">⭐</span>
+            <span class="star lit">⭐</span>
+          </div>
+          <h2 class="modal-title">MISSION COMPLETE!</h2>
+          <div class="unlocked-banner">🔓 NEXT AREA UNLOCKED</div>
+          <h3 class="modal-sub">Route Connected & Ambulance Safely Arrived</h3>
+          
+          <div class="stats-grid">
+            <div class="stat-box">
+              <span class="stat-num" id="stat-integrity">100%</span>
+              <span class="stat-name">Route Access</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-num" id="stat-time">01:14</span>
+              <span class="stat-name">Rescue Time</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-num">CIVIC HERO</span>
+              <span class="stat-name">Engineering Rank</span>
+            </div>
+          </div>
+
+          <p class="modal-text">
+            The ambulance arrived safely at the Village Hospital! The community route is now secure, and the barrier to <strong>District 2: Windmill Valley</strong> has opened! You may now continue exploring.
+          </p>
+
+          <div class="modal-actions">
+            <button id="btn-explore-village" class="modal-btn primary-btn">
+              🌟 Continue Exploring (District 2)
+            </button>
+            <button id="btn-replay-mission" class="modal-btn secondary-btn">
+              🔄 Replay Mission
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Help & Instructions -->
+      <div id="modal-help" class="modal-backdrop modal-hidden">
+        <div class="modal-card glass-panel-popup">
+          <h2 class="modal-title">HOW TO PLAY</h2>
+          <div class="help-sections">
+            <div class="help-item">
+              <div class="help-icon">1️⃣</div>
+              <div>
+                <h4>Explore the Village</h4>
+                <p>Use <strong>WASD</strong> to walk and <strong>Mouse</strong> to orbit camera. Walk to the broken river bridge.</p>
+              </div>
+            </div>
+            <div class="help-item">
+              <div class="help-icon">2️⃣</div>
+              <div>
+                <h4>Enter Build Mode</h4>
+                <p>Press <strong>[E]</strong> near the bridge to open the Builder. Camera lifts into tactical perspective.</p>
+              </div>
+            </div>
+            <div class="help-item">
+              <div class="help-icon">3️⃣</div>
+              <div>
+                <h4>Snap & Rotate Bridge Decks</h4>
+                <p>Select <strong>ROAD</strong> or <strong>BRIDGE</strong>. Hover near glowing sockets. Press <strong>[R]</strong> to rotate parallel to road, and click to place.</p>
+              </div>
+            </div>
+            <div class="help-item">
+              <div class="help-icon">4️⃣</div>
+              <div>
+                <h4>Test the Route</h4>
+                <p>Click <strong>TEST</strong>. If route access &lt; 100%, read the hint and adjust. At 100%, the ambulance drives across!</p>
+              </div>
+            </div>
+            <div class="help-item">
+              <div class="help-icon">5️⃣</div>
+              <div>
+                <h4>Next Area Unlocked</h4>
+                <p>When ambulance reaches hospital, District 2 gate opens so you can continue exploring.</p>
+              </div>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button id="btn-close-help" class="modal-btn primary-btn">
+              Let's Build!
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: NPC Dialogue Box -->
+      <div id="modal-dialogue" class="dialogue-backdrop modal-hidden">
+        <div class="dialogue-card glass-panel-popup">
+          <div class="dialogue-avatar-box">
+            <div class="dialogue-avatar" id="dialogue-avatar">🤖</div>
+            <div class="dialogue-speaker-role" id="dialogue-speaker-role">FUNOBOTZ HELPER</div>
+          </div>
+          <div class="dialogue-content">
+            <div class="dialogue-header">
+              <span class="dialogue-speaker-name" id="dialogue-speaker-name">SPARKY (MISSION GUIDE)</span>
+              <span class="dialogue-badge">FUNOBOTZ NPC</span>
+            </div>
+            <p class="dialogue-text" id="dialogue-text">
+              Emergency! The bridge is blocked. Repair the route so the ambulance can reach the hospital.
+            </p>
+            <div class="dialogue-footer">
+              <span class="dialogue-hint">Press [E] or [Space] to Continue</span>
+              <button id="btn-close-dialogue" class="dialogue-btn">CONTINUE [E]</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Script Entry -->
+  </body>
+</html>
